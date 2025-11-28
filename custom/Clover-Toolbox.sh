@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# check if Bazzite or SteamOS
+# check if Bazzite, SteamOS or CachyOS
 grep -i bazzite /etc/os-release &> /dev/null
 if [ $? -eq 0 ]
 then
@@ -15,10 +15,48 @@ else
 		EFI_PATH=/esp/efi
 		BOOTX64=$EFI_PATH/boot/bootx64.efi
 	else
-		exit
+		grep -i CachyOS /etc/os-release &> /dev/null
+		if [ $? -eq 0 ]
+		then
+			OS=CachyOS
+			EFI_PATH=/boot/EFI
+			BOOTX64=$EFI_PATH/BOOT/BOOTX64.EFI
+		else
+			exit
+		fi
 	fi
 fi
 
+# --- START: Function to Find Windows EFI Partition ---
+find_win_efi_partition() {
+    PART_LIST=$(lsblk -r -n -o NAME,FSTYPE 2>/dev/null | awk '$2=="vfat" {print $1}')
+    
+    for PART_NAME in $PART_LIST; do
+        PART="/dev/$PART_NAME"
+        TEMP_MOUNT_CHECK=~/temp_check_win_efi_$$
+        mkdir -p $TEMP_MOUNT_CHECK 2>/dev/null
+        
+        MOUNT_STATUS_OUTPUT=$(echo -e "$current_password\n" | sudo -S mount $PART $TEMP_MOUNT_CHECK 2>&1)
+        MOUNT_STATUS=$?
+        
+        if [ $MOUNT_STATUS -eq 0 ]; then
+            if [ -f "$TEMP_MOUNT_CHECK/EFI/Microsoft/Boot/bootmgfw.efi" ] || [ -f "$TEMP_MOUNT_CHECK/EFI/Microsoft/bootmgfw.efi" ]; then
+                echo -e "$current_password\n" | sudo -S umount $TEMP_MOUNT_CHECK &>/dev/null
+                rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+                echo "$PART"
+                return 0
+            fi
+            # Not Windows EFI - unmount and cleanup
+            echo -e "$current_password\n" | sudo -S umount $TEMP_MOUNT_CHECK &>/dev/null
+            rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+        else
+            # Mount failed - cleanup folder anyway
+            rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+        fi
+    done
+    return 1
+}
+# --- END: Function to Find Windows EFI Partition ---
 current_password=$(zenity --password --title "sudo Password Authentication")
 echo -e "$current_password\n" | sudo -S ls &> /dev/null
 if [ $? -ne 0 ]
@@ -30,7 +68,7 @@ fi
 
 while true
 do
-Choice=$(zenity --width 750 --height 450 --list --radiolist --multiple 	--title "Clover Toolbox for Clover script  - https://github.com/ryanrudolfoba/SteamDeck-clover-dualboot"\
+Choice=$(zenity --width 750 --height 450 --list --radiolist --multiple 	--title "Clover Toolbox for Clover script  -  https://github.com/asrozy98/SteamDeck-clover-dualboot-CachyOS-Windows"\
 	--column "Select One" \
 	--column "Option" \
 	--column="Description - Read this carefully!"\
@@ -130,16 +168,36 @@ Service_Choice=$(zenity --width 650 --height 250 --list --radiolist --multiple -
 
 	elif [ "$Service_Choice" == "Disable" ]
 	then
-		# restore Windows EFI entry from backup
-		echo -e "$current_password\n" | sudo -S cp $EFI_PATH/Microsoft/Boot/bootmgfw.efi.orig $EFI_PATH/Microsoft/Boot/bootmgfw.efi
+		# Detect Windows EFI partition
+		WIN_EFI_PART=$(find_win_efi_partition)
+		if [ -z "$WIN_EFI_PART" ]; then
+			zenity --error --title "Clover Toolbox" --text "Windows EFI partition not found. Cannot disable Clover." --width 450 --height 75
+		else
+			WIN_EFI_MOUNT_POINT=~/temp-WIN-EFI-toolbox-disable
+			mkdir -p $WIN_EFI_MOUNT_POINT 2>/dev/null
+			echo -e "$current_password\n" | sudo -S mount $WIN_EFI_PART $WIN_EFI_MOUNT_POINT 2>/dev/null
+			
+			if [ $? -eq 0 ]; then
+				WIN_EFI_PATH=$WIN_EFI_MOUNT_POINT/EFI
+				# restore Windows EFI entry from backup
+				echo -e "$current_password\n" | sudo -S cp $WIN_EFI_PATH/Microsoft/Boot/bootmgfw.efi.orig $WIN_EFI_PATH/Microsoft/Boot/bootmgfw.efi
 
-		# make Windows the next boot option!
-		Windows=$(efibootmgr | grep -i Windows | colrm 9 | colrm 1 4)
-		echo -e "$current_password\n" | sudo -S efibootmgr -n $Windows &> /dev/null
+				# make Windows the next boot option!
+				Windows=$(efibootmgr | grep -i Windows | colrm 9 | colrm 1 4)
+				echo -e "$current_password\n" | sudo -S efibootmgr -n $Windows &> /dev/null
 
-		# disable the Clover systemd service
-		echo -e "$current_password\n" | sudo -S systemctl disable --now clover-bootmanager
-		zenity --warning --title "Clover Toolbox" --text "Clover systemd service has been disabled. Windows is now activated!" --width 500 --height 75
+				# disable the Clover systemd service
+				echo -e "$current_password\n" | sudo -S systemctl disable --now clover-bootmanager
+				
+				echo -e "$current_password\n" | sudo -S umount $WIN_EFI_MOUNT_POINT 2>/dev/null
+				rmdir $WIN_EFI_MOUNT_POINT 2>/dev/null
+				
+				zenity --warning --title "Clover Toolbox" --text "Clover systemd service has been disabled. Windows is now activated!" --width 500 --height 75
+			else
+				rmdir $WIN_EFI_MOUNT_POINT 2>/dev/null
+				zenity --error --title "Clover Toolbox" --text "Failed to mount Windows EFI partition. Cannot disable Clover." --width 450 --height 75
+			fi
+		fi
 
 	elif [ "$Service_Choice" == "Enable" ]
 	then
@@ -156,6 +214,7 @@ Boot_Choice=$(zenity --width 550 --height 300 --list --radiolist --multiple --ti
 	FALSE Windows "Set Windows as the default OS to boot."\
 	FALSE SteamOS "Set SteamOS as the default OS to boot."\
 	FALSE Bazzite "Set Bazzite as the default OS to boot."\
+	FALSE CachyOS "Set CachyOS as the default OS to boot."\
 	FALSE LastOS "The last OS that was booted will be the default."\
 	TRUE EXIT "***** Exit the Clover Toolbox *****")
 
@@ -184,7 +243,14 @@ Boot_Choice=$(zenity --width 550 --height 300 --list --radiolist --multiple --ti
 		# change the Default Loader in config.plist 
 		echo -e "$current_password\n" | sudo -S sed -i '/<key>DefaultLoader<\/key>/!b;n;c\\t\t<string>\\EFI\\FEDORA\\shimx64\.efi<\/string>' $EFI_PATH/clover/config.plist
 		echo -e "$current_password\n" | sudo -S sed -i '/<key>DefaultVolume<\/key>/!b;n;c\\t\t<string>esp<\/string>' $EFI_PATH/clover/config.plist
-		zenity --warning --title "Clover Toolbox" --text "SteamOS is now the default boot entry in Clover!" --width 400 --height 75
+		zenity --warning --title "Clover Toolbox" --text "Bazzite is now the default boot entry in Clover!" --width 400 --height 75
+
+	elif [ "$Boot_Choice" == "CachyOS" ]
+	then
+		# change the Default Loader in config.plist 
+		echo -e "$current_password\n" | sudo -S sed -i '/<key>DefaultLoader<\/key>/!b;n;c\\t\t<string>\\efi\\systemd\\systemd-bootx64\.efi<\/string>' $EFI_PATH/clover/config.plist
+		echo -e "$current_password\n" | sudo -S sed -i '/<key>DefaultVolume<\/key>/!b;n;c\\t\t<string>esp<\/string>' $EFI_PATH/clover/config.plist
+		zenity --warning --title "Clover Toolbox" --text "CachyOS is now the default boot entry in Clover!" --width 400 --height 75
 
 	elif [ "$Boot_Choice" == "LastOS" ]
 	then
@@ -250,14 +316,32 @@ then
 
 elif [ "$Choice" == "Uninstall" ]
 then
-	# restore Windows EFI entry from backup
-	echo -e "$current_password\n" | sudo -S mv $EFI_PATH/Microsoft/Boot/bootmgfw.efi.orig $EFI_PATH/Microsoft/Boot/bootmgfw.efi
-	if [ $? -eq 0 ]
-	then
-		echo -e "$current_password\n" | sudo -S rm $EFI_PATH/Microsoft/bootmgfw.efi
+	# Detect Windows EFI partition
+	WIN_EFI_PART=$(find_win_efi_partition)
+	if [ -z "$WIN_EFI_PART" ]; then
+		zenity --warning --title "Clover Toolbox" --text "Windows EFI partition not found. Skipping Windows EFI restore." --width 450 --height 75
 	else
-		echo -e "$current_password\n" | sudo -S mv $EFI_PATH/Microsoft/bootmgfw.efi $EFI_PATH/Microsoft/Boot/bootmgfw.efi
+		WIN_EFI_MOUNT_POINT=~/temp-WIN-EFI-toolbox-uninstall
+		mkdir -p $WIN_EFI_MOUNT_POINT 2>/dev/null
+		echo -e "$current_password\n" | sudo -S mount $WIN_EFI_PART $WIN_EFI_MOUNT_POINT 2>/dev/null
+		
+		if [ $? -eq 0 ]; then
+			WIN_EFI_PATH=$WIN_EFI_MOUNT_POINT/EFI
+			# restore Windows EFI entry from backup
+			echo -e "$current_password\n" | sudo -S mv $WIN_EFI_PATH/Microsoft/Boot/bootmgfw.efi.orig $WIN_EFI_PATH/Microsoft/Boot/bootmgfw.efi
+			if [ $? -eq 0 ]
+			then
+				echo -e "$current_password\n" | sudo -S rm $WIN_EFI_PATH/Microsoft/bootmgfw.efi
+			fi
+			
+			echo -e "$current_password\n" | sudo -S umount $WIN_EFI_MOUNT_POINT 2>/dev/null
+			rmdir $WIN_EFI_MOUNT_POINT 2>/dev/null
+		else
+			rmdir $WIN_EFI_MOUNT_POINT 2>/dev/null
+			zenity --warning --title "Clover Toolbox" --text "Failed to mount Windows EFI partition. Windows EFI restore skipped." --width 500 --height 75
+		fi
 	fi
+	
 	echo -e "$current_password\n" | sudo -S mv $BOOTX64.orig $BOOTX64
 
 	# remove Clover from the EFI system partition
@@ -285,7 +369,7 @@ then
 	# delete dolphin root extension
 	rm ~/.local/share/kservices5/ServiceMenus/open_as_root.desktop
 
-	rm -rf ~/SteamDeck-Clover-dualboot
+	rm -rf ~/SteamDeck-Clover-dualboot-CachyOS-Windows
 	rm -rf ~/1Clover-tools/
 	rm ~/Desktop/Clover-Toolbox
 	

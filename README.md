@@ -1,12 +1,55 @@
-# Steam Deck and Legion Go S - Installing Clover Script for Dual Boot Between SteamOS (or Bazzite) and Windows (and other OSes too!)
+# Steam Deck and Legion Go S - Installing Clover Script for Dual Boot Between SteamOS, Bazzite, CachyOS and Windows (and other OSes too!)
 
 ## About
 
-A collection of tools that is packaged into an easy to use script that is streamlined and tested to work with the Steam Deck and Lenovo Legion Go S running on SteamOS.
+A collection of tools that is packaged into an easy to use script that is streamlined and tested to work with the Steam Deck and Lenovo Legion Go S running on SteamOS, Bazzite, CachyOS and Windows.
 
 * The main program that does all the heavy lifting is [Clover - a graphical boot manager / boot loader.](https://github.com/CloverHackyColor/CloverBootloader)
 * Clover Toolbox is a shell script that offers a simple GUI to configure some aspects of Clover script.
 * Custom systemd script that performs a sanity check whenever SteamOS starts up making sure that the dual boot is intact and repairs it automatically if needed.
+
+## Fork Information
+
+> **NOTE**
+> This is a modified fork of the original [SteamDeck-Clover-dualboot](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot) repository by [ryanrudolfoba](https://github.com/ryanrudolfoba).
+
+### Modifications and Enhancements
+
+This fork includes the following modifications to support CachyOS-based Steam Deck handhelds and improve partition detection:
+
+#### CachyOS Support
+- **Full CachyOS compatibility**: Added support for Steam Deck running CachyOS handheld edition
+- **systemd-boot detection**: Automatically detects and configures CachyOS default bootloader (systemd-boot)
+- **Multiple bootloader support**: Supports systemd-boot, grub, and custom CachyOS bootloader configurations
+- **Auto-configuration**: Automatically sets the correct default boot entry for CachyOS in Clover config
+
+#### Automatic Partition Detection
+- **Linux EFI partition auto-detection**: Uses `findmnt` to automatically detect the Linux EFI partition based on mount point
+  - No more hardcoded `/dev/nvme0n1p1` references
+  - Works with different disk configurations and partition schemes
+  - Dynamically extracts partition numbers from detected device paths
+
+- **Windows EFI partition auto-detection**: Scans all vfat partitions to automatically locate Windows EFI partition
+  - Searches for Windows bootloader signature (`bootmgfw.efi`)
+  - Works with Windows installed on any partition or disk
+  - Gracefully handles scenarios where Windows partition is not found
+
+- **Improved compatibility**: Scripts now work across different disk layouts and configurations without manual intervention
+
+#### Updated Scripts
+All scripts have been updated with automatic detection capabilities:
+- `install-clover.sh` - Main installation script with full auto-detection
+- `clover-bootmanager.sh` - Systemd service script with dynamic partition detection
+- `Clover-Toolbox.sh` - GUI toolbox with automatic Windows partition detection
+
+#### Tested Configuration
+This fork has been tested and verified to work on:
+- **Device**: Steam Deck
+- **Operating Systems**: CachyOS Handheld Edition + Windows 11
+- **Partition Layout**: Separate boot partitions for Linux and Windows (independent EFI partitions)
+- **Boot Configuration**: Successfully detects and boots from both operating systems with different EFI partition locations
+
+These modifications make the installation and management process more robust and eliminate the need for manual partition path configuration.
 
 ## What's New as of July 07 2025
 1. Add Legion GO support 83E1 variant
@@ -40,18 +83,18 @@ A collection of tools that is packaged into an easy to use script that is stream
 1. Minor update to easily change config between Batocera v38 and the upcoming Batocera v39. <br>
 
 Launch Clover Toolbox and select Batocera to choose between Batocera v38 or Batocera v39 - <br>
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/e256e284-5643-419e-9ed0-267b6210d17a)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/e256e284-5643-419e-9ed0-267b6210d17a)
 
 Select v39 or v38 - <br>
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/804dbd8d-067e-41da-b8c3-ab7b828cb94e)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/804dbd8d-067e-41da-b8c3-ab7b828cb94e)
 
 Config will be updated based on user selection - <br>
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/ba82a2b5-9035-4705-86bd-a2a7ef283061)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/ba82a2b5-9035-4705-86bd-a2a7ef283061)
 
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/471ee338-956a-4e9c-9e5c-af115a98cdca)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/471ee338-956a-4e9c-9e5c-af115a98cdca)
 </p>
 
-<p><b>January 15 2024)</b></br>
+<p><b>January 15 2024</b></br>
 1. Updated for Clover release 5157. <br>
 2. Added an option in Clover Toolbox to use custom Clover 5157. This hides the OPTIONS button. <br>
 3. Added an option in Clover Toolbox to select the default grey embedded theme. </p><br>
@@ -139,38 +182,11 @@ Config will be updated based on user selection - <br>
 5. All-in-One script - install, disable / re-enable, uninstall. </p><br>
 </details>
 
-
-> **NOTE**\
-> If you are going to use this script for a video tutorial, PLEASE reference on your video where you got the script! This will make the support process easier!
-> And don't forget to give a shoutout to [@10MinuteSteamDeckGamer](https://www.youtube.com/@10MinuteSteamDeckGamer/) / ryanrudolf from the Philippines!
->
-
-<b> If you like my work please show support by subscribing to my [YouTube channel @10MinuteSteamDeckGamer.](https://www.youtube.com/@10MinuteSteamDeckGamer/) </b> <br>
-<b> I'm just passionate about Linux, Windows, how stuff works, and playing retro and modern video games on my Steam Deck! </b>
-<p align="center">
-<a href="https://www.youtube.com/@10MinuteSteamDeckGamer/"> <img src="https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/blob/main/10minute.png"/> </a>
-</p>
-
-<b>Monetary donations are also encouraged if you find this project helpful. Your donation inspires me to continue research on the Steam Deck! Clover script, 70Hz mod, SteamOS microSD, Secure Boot, etc.</b>
-
-<b>Scan the QR code or click the image below to visit my donation page.</b>
-
-<p align="center">
-<a href="https://www.paypal.com/donate/?business=VSMP49KYGADT4&no_recurring=0&item_name=Your+donation+inspires+me+to+continue+research+on+the+Steam+Deck%21%0AClover+script%2C+70Hz+mod%2C+SteamOS+microSD%2C+Secure+Boot%2C+etc.%0A%0A&currency_code=CAD"> <img src="https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/blob/main/QRCode.png"/> </a>
-</p>
-
 ## Disclaimer
 1. Do this at your own risk! <br>
 2. This is for educational and research purposes only! <br>
 
-I've created and has been using this script since December 2022 and a lot of users are reporting success too. You are in good hands - I know what I'm doing but I just need the standard disclaimer to protect myself from any liability.
-
-## [Video Tutorial - How to Install Clover for Steam Deck dual boot](https://www.youtube.com/watch?v=HDnxOw6j3EY&t=975s)
-[Click the image below for a video tutorial and to see the functionalities of the script!](https://www.youtube.com/watch?v=HDnxOw6j3EY&t=975s)
-</b>
-<p align="center">
-<a href="https://www.youtube.com/watch?v=heo2yFycnsM"> <img src="https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/blob/main/banner.png"/> </a>
-</p>
+I've modified and has been using this script since December 2024. You are in good hands - I know what I'm doing but I just need the standard disclaimer to protect myself from any liability.
 
 ## Quick Install Steps - if you are in a hurry then this is what you need (but really you should read the rest of the README!)
 Perform some Windows config first! Boot to Windows and open elevated command prompt or PowerShell -
@@ -188,7 +204,7 @@ Once done, boot to SteamOS to install Clover!
    cd ~/
    ```
    ```cmd
-   git clone https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot
+   git clone https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows
    ```
    
    If it errors that folder already exists, delete the old folder first - <br>
@@ -198,7 +214,7 @@ Once done, boot to SteamOS to install Clover!
    
    Then perform the clone again - <br>
    ```cmd
-   git clone https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot
+   git clone https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows
    ```
    
 3. Execute the script! <br>
@@ -224,6 +240,52 @@ Once done, boot to SteamOS to install Clover!
 ![image](https://user-images.githubusercontent.com/98122529/214861561-bb63c209-14ee-492a-a506-2a87665f52d3.png)<br>
 
 <b>6. OPTIONAL - Scheduled Task for Windows. Use this only if you have Windows installed on microSD / external SSD and if Windows keeps hijacking the bootloader!</b>
+
+## Quick Check Steps - verify your Clover dual boot configuration
+If you want to check the status of your Clover dual boot installation and verify partition detection, use the check.sh script!
+1. Boot into SteamOS, then go into Desktop Mode and open a konsole terminal.<br>
+2. Clone the github repo. <br>
+   ```cmd
+   cd ~/
+   ```
+   ```cmd
+   git clone https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows
+   ```
+   
+   If it errors that folder already exists, delete the old folder first - <br>
+   ```cmd
+   rm -rf ~/SteamDeck-Clover-dualboot
+   ```
+   
+   Then perform the clone again - <br>
+   ```cmd
+   git clone https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows
+   ```
+   
+3. Execute the check script! <br>
+   ```cmd
+   cd ~/SteamDeck-Clover-dualboot
+   ```
+   ```cmd
+   chmod +x check.sh
+   ```
+   ```cmd
+   ./check.sh
+   ```
+
+4. The script will check if sudo password is already set. <br>
+    - If it is already set, enter the current sudo password and the script will continue.
+    - If wrong password is provided the script will exit immediately. Re-run the script and enter the correct sudo password!
+    - If the sudo password is blank / not yet set by the end user, the script will prompt to setup the sudo password. Re-run the script to continue.
+                     
+5. The script will display comprehensive information about your system:<br>
+    - **Device Information**: Model, BIOS version, kernel version
+    - **Operating System**: Detected OS (SteamOS, Bazzite, or CachyOS) with version info
+    - **Linux EFI Partition**: Auto-detected partition with mount point, size, and usage
+    - **Windows EFI Partition**: Auto-detected Windows partition (if installed) with details
+    - **Clover Installation Status**: Boot entry, EFI files, and systemd service status
+    - **Configuration Summary**: Quick overview of all detected components
+
 <details>
 <summary><b>Use this only if you have Windows installed on microSD / external SSD and if Windows keeps hijacking the bootloader!</b></summary>
 
@@ -269,7 +331,7 @@ Once done, boot to SteamOS to install Clover!
 ![image](https://user-images.githubusercontent.com/98122529/233867354-4d554a4e-1e1f-42f7-968a-31a8c0b677b2.png)
 
 **Clover Toolbox**
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/8308d81f-99f6-4751-abf1-3ebb8436322a)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/8308d81f-99f6-4751-abf1-3ebb8436322a)
 
 <details>
 <summary><b>More Screenshots Here</b></summary>
@@ -394,12 +456,12 @@ To update to a new version -
 3. Double-click Clover Toolbox desktop icon. <br>
 4. Select the item called Service and press OK. <br>
 
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/f7299f1a-989b-4f0b-864f-3a527162a6b5)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/f7299f1a-989b-4f0b-864f-3a527162a6b5)
    
 5. Press the item called Disable and press OK. <br>
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/0be15a60-6513-4608-8642-412dd0a7646e)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/0be15a60-6513-4608-8642-412dd0a7646e)
    
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/decb3a9d-7499-4df1-b7a4-abd3e23fa892)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/decb3a9d-7499-4df1-b7a4-abd3e23fa892)
 
 6. Reboot and it will automatically boot to Windows. <br>
 
@@ -411,9 +473,9 @@ To update to a new version -
 10. Press VOLDOWN + POWER and select SteamOS from the list.<br>
 11. Follow step2 onwards, and on step 5 select the item called Enable. <br>
    
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/2fd5b3ef-5247-49da-886c-2095e3ce44f3)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/2fd5b3ef-5247-49da-886c-2095e3ce44f3)
    
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/d9c5ecd2-0426-40fd-8fb0-88f38ba54b55)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/d9c5ecd2-0426-40fd-8fb0-88f38ba54b55)
    
 12. Reboot and it will go back to Clover!
 </details>
@@ -425,12 +487,12 @@ To update to a new version -
 3. Double-click Clover Toolbox desktop icon. <br>
 4. Select the item called Service and press OK. <br>
 
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/f7299f1a-989b-4f0b-864f-3a527162a6b5)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/f7299f1a-989b-4f0b-864f-3a527162a6b5)
    
 5. Press the item called Disable and press OK. <br>
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/0be15a60-6513-4608-8642-412dd0a7646e)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/0be15a60-6513-4608-8642-412dd0a7646e)
    
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/decb3a9d-7499-4df1-b7a4-abd3e23fa892)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/decb3a9d-7499-4df1-b7a4-abd3e23fa892)
 
 6. Reboot and it will automatically boot to Windows. <br>
 7. Install the GPU / APU driver upgrade and reboot Windows.<br>
@@ -439,9 +501,9 @@ To update to a new version -
 10. Press VOLDOWN + POWER and select SteamOS from the list.<br>
 11. Follow step2 onwards, and on step 5 select the item called Enable. <br>
    
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/2fd5b3ef-5247-49da-886c-2095e3ce44f3)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/2fd5b3ef-5247-49da-886c-2095e3ce44f3)
    
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/d9c5ecd2-0426-40fd-8fb0-88f38ba54b55)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/d9c5ecd2-0426-40fd-8fb0-88f38ba54b55)
    
 12. Reboot and it will go back to Clover!
 </details>
@@ -490,7 +552,7 @@ This can happen if you have an old version of SteamOS installed or have installe
 3. Double-click Clover Toolbox desktop icon. <br>
 4. Select the item called Uninstall and press OK. <br>
    
-![image](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/assets/98122529/dced41a9-74e3-4dca-a90d-38e0e373614a)
+![image](https://github.com/asrozy98/SteamDeck-Clover-dualboot-CachyOS-Windows/assets/98122529/dced41a9-74e3-4dca-a90d-38e0e373614a)
 
 4. Clover will be uninstalled and on next reboot it will automatically load Windows. Clover has been uninstalled!<br>
 </details>
@@ -531,18 +593,50 @@ If you use a display with a resolution higher than 1080p anyway, a workaround fo
 
 Note that this workaround **will make Clover screen rotated on Steam Deck's built-in display** when it is not connected to an external display.
 
+> **NOTE**\
+> This is a modified fork of the original [SteamDeck-Clover-dualboot](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot) repository.
+> This fork focuses on adding CachyOS support and automatic partition detection improvements.
+> 
+> If you find this fork useful, please also show support to the original creator **[ryanrudolfoba](https://github.com/ryanrudolfoba)** by:
+> - Subscribing to [@10MinuteSteamDeckGamer YouTube channel](https://www.youtube.com/@10MinuteSteamDeckGamer/)
+> - Considering a [donation](https://www.paypal.com/donate/?business=VSMP49KYGADT4&no_recurring=0&item_name=Your+donation+inspires+me+to+continue+research+on+the+Steam+Deck%21%0AClover+script%2C+70Hz+mod%2C+SteamOS+microSD%2C+Secure+Boot%2C+etc.%0A%0A&currency_code=CAD) to support their continued research on Steam Deck projects
+
+<b>Scan the QR code or click the image below to visit creator donation page.</b>
+
+<p align="center">
+<a href="https://www.paypal.com/donate/?business=VSMP49KYGADT4&no_recurring=0&item_name=Your+donation+inspires+me+to+continue+research+on+the+Steam+Deck%21%0AClover+script%2C+70Hz+mod%2C+SteamOS+microSD%2C+Secure+Boot%2C+etc.%0A%0A&currency_code=CAD"> <img src="https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/blob/main/QRCode.png"/> </a>
+</p>
+
+## [Video Tutorial - How to Install Clover for Steam Deck dual boot](https://www.youtube.com/watch?v=HDnxOw6j3EY&t=975s)
+[Click the image below for a video tutorial and to see the functionalities of the script!](https://www.youtube.com/watch?v=HDnxOw6j3EY&t=975s)
+</b>
+<p align="center">
+<a href="https://www.youtube.com/watch?v=heo2yFycnsM"> <img src="https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot/blob/main/banner.png"/> </a>
+</p>
+
 ## Acknowledgement / Thanks
-Thanks to jlobue10 for his rEFInd script [available here.](https://github.com/jlobue10/SteamDeck_rEFInd) This Clover script was inspired by jlobue10's rEFInd script.
+
+### Fork Modifications
+This fork adds CachyOS support and automatic partition detection features by **[asrozy98](https://github.com/asrozy98)**.
+
+### Original Author
+**Special thanks to [ryanrudolfoba](https://github.com/ryanrudolfoba)** for creating the original [SteamDeck-Clover-dualboot](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot) script that this fork is based on. This project would not exist without their excellent work and dedication to the Steam Deck community.
+
+- YouTube: [@10MinuteSteamDeckGamer](https://www.youtube.com/@10MinuteSteamDeckGamer/)
+- Original repository: [SteamDeck-Clover-dualboot](https://github.com/ryanrudolfoba/SteamDeck-Clover-dualboot)
+
+### Additional Credits
+Thanks to jlobue10 for his rEFInd script [available here.](https://github.com/jlobue10/SteamDeck_rEFInd) The original Clover script was inspired by jlobue10's rEFInd script.
 
 And in no particular order -<br>
 - the Clover team / sergey for creating this awesome software. <br>
 - Christoph Pfisterer for creating rEFIt which Clover is a fork of. <br>
-- ss64.com for my quick online reference guide on command line switches! I also use this at work when scripting using bash / batch / powershell. <br>
+- ss64.com for quick online reference guide on command line switches. <br>
 - deckwizard for testing the initial Clover script. <br>
 - arkag for the code enhancement to pull the ISO directly from Clover repo. <br>
 - community contributed icons / logos for SteamOS and Batocera (thanks to WindowsOnDeck reddit members u/ch3vr0n5 and u/ChewyYui). <br>
 - baldsealion for creating the custom splash screen for Windows. <br>
 - Kodi Ross from FB Steam Deck Community for the Rick and Morty theme. <br>
 - insanelymac and its forum members for creating beautiful Clover themes. <br>
+- LOUP the author of the OpenAsRoot KDE extension. <br>
 - and the rest of WindowsOnDeck reddit community / discord server!<br>
-- PS I forgot to mention LOUP the author of the OpenAsRoot KDE extension.
