@@ -27,6 +27,58 @@ else
 	fi
 fi
 
+# --- START: Helper Functions for Safe Unmount and Cleanup ---
+# Helper function for safe unmount with retry
+safe_unmount() {
+    local mount_point="$1"
+    local password="$2"
+    local max_retries=3
+    local retry=0
+    
+    while [ $retry -lt $max_retries ]; do
+        if [ -n "$password" ]; then
+            echo -e "$password\n" | sudo -S umount "$mount_point" 2>/dev/null
+        else
+            umount "$mount_point" 2>/dev/null
+        fi
+        
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+        
+        # Wait and retry
+        sleep 1
+        retry=$((retry + 1))
+    done
+    
+    # Force unmount as last resort
+    if [ -n "$password" ]; then
+        echo -e "$password\n" | sudo -S umount -f "$mount_point" 2>/dev/null || \
+        echo -e "$password\n" | sudo -S umount -l "$mount_point" 2>/dev/null
+    else
+        umount -f "$mount_point" 2>/dev/null || umount -l "$mount_point" 2>/dev/null
+    fi
+    
+    return $?
+}
+
+# Helper function for safe cleanup
+safe_cleanup() {
+    local temp_dir="$1"
+    local password="$2"
+    
+    # Check if still mounted
+    if mountpoint -q "$temp_dir" 2>/dev/null; then
+        safe_unmount "$temp_dir" "$password"
+    fi
+    
+    # Cleanup directory
+    if [ -d "$temp_dir" ]; then
+        rmdir "$temp_dir" 2>/dev/null || rm -rf "$temp_dir" 2>/dev/null
+    fi
+}
+# --- END: Helper Functions ---
+
 # --- START: Function to Find Windows EFI Partition ---
 find_win_efi_partition() {
     PART_LIST=$(lsblk -r -n -o NAME,FSTYPE 2>/dev/null | awk '$2=="vfat" {print $1}')
@@ -41,17 +93,17 @@ find_win_efi_partition() {
         
         if [ $MOUNT_STATUS -eq 0 ]; then
             if [ -f "$TEMP_MOUNT_CHECK/EFI/Microsoft/Boot/bootmgfw.efi" ] || [ -f "$TEMP_MOUNT_CHECK/EFI/Microsoft/bootmgfw.efi" ]; then
-                echo -e "$current_password\n" | sudo -S umount $TEMP_MOUNT_CHECK &>/dev/null
-                rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+                safe_unmount "$TEMP_MOUNT_CHECK" "$current_password"
+                safe_cleanup "$TEMP_MOUNT_CHECK" "$current_password"
                 echo "$PART"
                 return 0
             fi
             # Not Windows EFI - unmount and cleanup
-            echo -e "$current_password\n" | sudo -S umount $TEMP_MOUNT_CHECK &>/dev/null
-            rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+            safe_unmount "$TEMP_MOUNT_CHECK" "$current_password"
+            safe_cleanup "$TEMP_MOUNT_CHECK" "$current_password"
         else
             # Mount failed - cleanup folder anyway
-            rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+            safe_cleanup "$TEMP_MOUNT_CHECK" "$current_password"
         fi
     done
     return 1
@@ -189,12 +241,12 @@ Service_Choice=$(zenity --width 650 --height 250 --list --radiolist --multiple -
 				# disable the Clover systemd service
 				echo -e "$current_password\n" | sudo -S systemctl disable --now clover-bootmanager
 				
-				echo -e "$current_password\n" | sudo -S umount $WIN_EFI_MOUNT_POINT 2>/dev/null
-				rmdir $WIN_EFI_MOUNT_POINT 2>/dev/null
+				safe_unmount "$WIN_EFI_MOUNT_POINT" "$current_password"
+                safe_cleanup "$WIN_EFI_MOUNT_POINT" "$current_password"
 				
 				zenity --warning --title "Clover Toolbox" --text "Clover systemd service has been disabled. Windows is now activated!" --width 500 --height 75
 			else
-				rmdir $WIN_EFI_MOUNT_POINT 2>/dev/null
+                safe_cleanup "$WIN_EFI_MOUNT_POINT" "$current_password"
 				zenity --error --title "Clover Toolbox" --text "Failed to mount Windows EFI partition. Cannot disable Clover." --width 450 --height 75
 			fi
 		fi

@@ -38,7 +38,7 @@ This fork includes the following modifications to support CachyOS-based Steam De
 
 #### Updated Scripts
 All scripts have been updated with automatic detection capabilities:
-- `install-clover.sh` - Main installation script with full auto-detection
+- `install-Clover.sh` - Main installation script with full auto-detection
 - `clover-bootmanager.sh` - Systemd service script with dynamic partition detection
 - `Clover-Toolbox.sh` - GUI toolbox with automatic Windows partition detection
 

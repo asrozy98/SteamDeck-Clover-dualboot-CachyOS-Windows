@@ -35,7 +35,7 @@
 		<key>Components</key>
 		<dict>
 			<key>Functions</key>
-			<false/>
+			<true/>
 			<key>Help</key>
 			<false/>
 			<key>Label</key>

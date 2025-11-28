@@ -143,6 +143,56 @@ echo "========================================="
 echo "Searching for Windows EFI partition..."
 echo ""
 
+# Helper function for safe unmount with retry
+safe_unmount() {
+    local mount_point="$1"
+    local password="$2"
+    local max_retries=3
+    local retry=0
+    
+    while [ $retry -lt $max_retries ]; do
+        if [ -n "$password" ]; then
+            echo -e "$password\n" | sudo -S umount "$mount_point" 2>/dev/null
+        else
+            umount "$mount_point" 2>/dev/null
+        fi
+        
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+        
+        # Wait and retry
+        sleep 1
+        retry=$((retry + 1))
+    done
+    
+    # Force unmount as last resort
+    if [ -n "$password" ]; then
+        echo -e "$password\n" | sudo -S umount -f "$mount_point" 2>/dev/null || \
+        echo -e "$password\n" | sudo -S umount -l "$mount_point" 2>/dev/null
+    else
+        umount -f "$mount_point" 2>/dev/null || umount -l "$mount_point" 2>/dev/null
+    fi
+    
+    return $?
+}
+
+# Helper function for safe cleanup
+safe_cleanup() {
+    local temp_dir="$1"
+    local password="$2"
+    
+    # Check if still mounted
+    if mountpoint -q "$temp_dir" 2>/dev/null; then
+        safe_unmount "$temp_dir" "$password"
+    fi
+    
+    # Cleanup directory
+    if [ -d "$temp_dir" ]; then
+        rmdir "$temp_dir" 2>/dev/null || rm -rf "$temp_dir" 2>/dev/null
+    fi
+}
+
 # Function to find the Windows EFI partition
 find_win_efi_partition() {
     PART_LIST=$(lsblk -r -n -o NAME,FSTYPE 2>/dev/null | awk '$2=="vfat" {print $1}')
@@ -156,7 +206,8 @@ find_win_efi_partition() {
         TEMP_MOUNT_CHECK=~/temp_check_win_efi_$$
         mkdir -p $TEMP_MOUNT_CHECK 2>/dev/null
         
-        MOUNT_STATUS_OUTPUT=$(echo -e "$current_password\n" | sudo -S mount $PART $TEMP_MOUNT_CHECK 2>&1)
+        # Mount READ-ONLY to prevent any data corruption
+        MOUNT_STATUS_OUTPUT=$(echo -e "$current_password\n" | sudo -S mount -o ro $PART $TEMP_MOUNT_CHECK 2>&1)
         MOUNT_STATUS=$?
 
         if [ $MOUNT_STATUS -eq 0 ]; then
@@ -173,18 +224,22 @@ find_win_efi_partition() {
                 echo "WIN_FREE=$WIN_FREE" >> $TEMP_WIN_INFO
                 echo "WIN_PERCENT=$WIN_PERCENT" >> $TEMP_WIN_INFO
                 
-                echo -e "$current_password\n" | sudo -S umount $TEMP_MOUNT_CHECK &>/dev/null
-                rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+                # Safe unmount and cleanup
+                safe_unmount "$TEMP_MOUNT_CHECK" "$current_password"
+                if [ $? -ne 0 ]; then
+                    echo "  Warning: Failed to unmount $PART properly" >&2
+                fi
+                safe_cleanup "$TEMP_MOUNT_CHECK" "$current_password"
                 
                 echo "$PART"
                 return 0
             fi
             # Not Windows EFI - unmount and cleanup
-            echo -e "$current_password\n" | sudo -S umount $TEMP_MOUNT_CHECK &>/dev/null
-            rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+            safe_unmount "$TEMP_MOUNT_CHECK" "$current_password"
+            safe_cleanup "$TEMP_MOUNT_CHECK" "$current_password"
         else
             # Mount failed - cleanup folder anyway
-            rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+            safe_cleanup "$TEMP_MOUNT_CHECK" "$current_password"
         fi
     done
 

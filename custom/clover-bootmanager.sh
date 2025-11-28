@@ -105,6 +105,41 @@ else
 	efibootmgr -c -d $LINUX_DISK -p $LINUX_PART_NUM -L "$OS" -l "$EFI_NAME" &> /dev/null
 fi
 
+# Helper function for safe unmount with retry (no password needed - runs as root via systemd)
+safe_unmount() {
+    local mount_point="$1"
+    local max_retries=3
+    local retry=0
+    
+    while [ $retry -lt $max_retries ]; do
+        umount "$mount_point" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+        sleep 1
+        retry=$((retry + 1))
+    done
+    
+    # Force unmount as last resort
+    umount -f "$mount_point" 2>/dev/null || umount -l "$mount_point" 2>/dev/null
+    return $?
+}
+
+# Helper function for safe cleanup
+safe_cleanup() {
+    local temp_dir="$1"
+    
+    # Check if still mounted
+    if mountpoint -q "$temp_dir" 2>/dev/null; then
+        safe_unmount "$temp_dir"
+    fi
+    
+    # Cleanup directory
+    if [ -d "$temp_dir" ]; then
+        rmdir "$temp_dir" 2>/dev/null || rm -rf "$temp_dir" 2>/dev/null
+    fi
+}
+
 # --- START: Automatic Windows EFI Partition Detection ---
 find_win_efi_partition() {
     PART_LIST=$(lsblk -r -n -o NAME,FSTYPE 2>/dev/null | awk '$2=="vfat" {print $1}')
@@ -119,17 +154,17 @@ find_win_efi_partition() {
         
         if [ $MOUNT_STATUS -eq 0 ]; then
             if [ -f "$TEMP_MOUNT_CHECK/EFI/Microsoft/Boot/bootmgfw.efi" ] || [ -f "$TEMP_MOUNT_CHECK/EFI/Microsoft/bootmgfw.efi" ]; then
-                umount $TEMP_MOUNT_CHECK &>/dev/null
-                rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+                safe_unmount "$TEMP_MOUNT_CHECK"
+                safe_cleanup "$TEMP_MOUNT_CHECK"
                 echo "$PART"
                 return 0
             fi
             # Not Windows EFI - unmount and cleanup
-            umount $TEMP_MOUNT_CHECK &>/dev/null
-            rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+            safe_unmount "$TEMP_MOUNT_CHECK"
+            safe_cleanup "$TEMP_MOUNT_CHECK"
         else
             # Mount failed - cleanup folder anyway
-            rmdir $TEMP_MOUNT_CHECK 2>/dev/null || rm -rf $TEMP_MOUNT_CHECK 2>/dev/null
+            safe_cleanup "$TEMP_MOUNT_CHECK"
         fi
     done
     return 1
@@ -165,12 +200,12 @@ else
             echo Windows EFI needs to be disabled - done. >> $CloverStatus
         fi
         
-        umount $WIN_EFI_MOUNT_POINT 2>/dev/null
+        safe_unmount "$WIN_EFI_MOUNT_POINT"
     else
         echo "Failed to mount Windows EFI partition ($WIN_EFI_PART)." >> $CloverStatus
     fi
     
-    rmdir $WIN_EFI_MOUNT_POINT 2>/dev/null
+    safe_cleanup "$WIN_EFI_MOUNT_POINT"
 fi
 # --- END: Automatic Windows EFI Partition Detection ---
 

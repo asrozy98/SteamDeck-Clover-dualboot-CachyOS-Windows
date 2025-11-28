@@ -50,7 +50,7 @@
 			<key>Banner</key>
 			<true/>
 			<key>Functions</key>
-			<false/>
+			<true/>
 			<key>Help</key>
 			<false/>
 			<key>Label</key>
